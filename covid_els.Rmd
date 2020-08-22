@@ -79,6 +79,8 @@ covid
 ```
 
 ```{r}
+see https://rpubs.com/lrborchers/651419 for output 
+
 ### key
 # tc = covid-19 assessment time point
 ## sex
@@ -117,20 +119,22 @@ t.test(CESDC_total.TC ~ Child_Sex.T1, data = covid, rm.na=TRUE,  var.equal=T)
 ```
 
 ```{r}
-# methods
-dates <- read.csv('/Volumes/group/users/borchersLR/COVID/github/tc_dates.csv',sep=",",header=T)
-dates_sample <-left_join(covid, dates, by="ELS_ID")
+## methods
+# dates not available; identifying information
+# see https://rpubs.com/lrborchers/651419 for output 
+# dates <- read.csv('/Volumes/group/users/borchersLR/COVID/github/tc_dates.csv',sep=",",header=T)
+# dates_sample <-left_join(covid, dates, by="ELS_ID")
 
 # time between
-dates_sample$background_timestamp<-as.Date(dates_sample$background_timestamp, format = "%m/%d/%y")
-summary(dates_sample$background_timestamp)
+# dates_sample$background_timestamp<-as.Date(dates_sample$background_timestamp, format = "%m/%d/%y")
+# summary(dates_sample$background_timestamp)
 
 # days between shelter in place March 17
-shelter<-as.Date(as.character("03/17/2020"), format="%m/%d/%y")
-dates_sample$date_diff <- dates_sample$background_timestamp- shelter
-summary(as.integer(dates_sample$date_diff))
-mean(as.integer(dates_sample$date_diff), na.rm=T)
-sd(as.integer(dates_sample$date_diff), na.rm=T)
+# shelter<-as.Date(as.character("03/17/2020"), format="%m/%d/%y")
+# dates_sample$date_diff <- dates_sample$background_timestamp- shelter
+# summary(as.integer(dates_sample$date_diff))
+# mean(as.integer(dates_sample$date_diff), na.rm=T)
+# sd(as.integer(dates_sample$date_diff), na.rm=T)
 
 # percent of participants who completed the covid-19 (TC) assessment 
 109/221
