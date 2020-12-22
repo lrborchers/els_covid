@@ -1,0 +1,615 @@
+---
+title: "els_covid"
+author: "Lauren R. Borchers"
+date: "12/22/2020"
+output: html_document
+---
+
+---
+title: 'ELS Predicts Dep in Adolescents During COVID-19: Mediating Role of Stress'
+author: "Lauren R. Borchers"
+date: "06/01/2020"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r}
+# load libraries 
+library("knitr")  
+library("ggplot2")
+library("ggpubr")
+library("tidyverse")
+library("ggstatsplot")
+library("psych")
+library("ggthemes")
+library("summarytools")
+library("Hmisc")
+library("corrr")
+library("sjstats")
+library("psych")
+library("ggcorrplot")
+library("sjmisc")
+library("lubridate")
+library("dplyr")
+```
+
+```{r}
+# data file
+covid = read.csv("/Volumes/group/users/borchersLR/COVID/github/covid.csv")
+# excluding participants with no cesdc
+covid = covid %>% 
+    filter(!is.na(CESDC_total.TC))
+# N = 109
+head(covid)
+```
+
+```{r}
+### key
+# tc = covid-19 assessment time point
+## sex
+# 1 is male; 2 is female
+## race
+# 1 is white; 2 is black/african american; 3 is hispanic/latin-x; 4 is asian/asian american; 5 is biracial; 6 is other race
+# els = early life stress
+```
+
+```{r}
+# abstract
+# number of male and female participants in the sample
+# 1 is male; 2 is female
+covid %>% 
+      group_by(Child_Sex.T1) %>%
+      summarise(n=n())
+# age range of participants
+min(covid$Child_Age.TC)
+max(covid$Child_Age.TC)
+# years between baseline and tc assessment
+covid$years <- covid$Child_Age.TC-covid$Age_S1.T1
+summary(covid$years)
+mean(covid$years)
+sd(covid$years)
+# correlation between els and depression 
+cor.test(covid$sumsev_type_t1, covid$CESDC_total.TC)
+# sex differences in depression
+t.test(CESDC_total.TC ~ Child_Sex.T1, data = covid, rm.na=TRUE,  var.equal=T)
+```
+
+```{r}
+## methods
+# dates not publicly available; identifying information
+# dates <- read.csv('/Volumes/group/users/borchersLR/COVID/github/tc_dates.csv',sep=",",header=T)
+# dates_sample <-left_join(covid, dates, by="ELS_ID")
+# time between
+# dates_sample$background_timestamp<-as.Date(dates_sample$background_timestamp, format = "%m/%d/%y")
+# summary(dates_sample$background_timestamp)
+# days between shelter in place March 17
+# shelter<-as.Date(as.character("03/17/2020"), format="%m/%d/%y")
+# dates_sample$date_diff <- dates_sample$background_timestamp- shelter
+# summary(as.integer(dates_sample$date_diff))
+# mean(as.integer(dates_sample$date_diff), na.rm=T)
+# sd(as.integer(dates_sample$date_diff), na.rm=T)
+# percent of participants who completed the covid-19 (TC) assessment 
+109/221
+# age of participants
+min(covid$Child_Age.TC)
+max(covid$Child_Age.TC)
+mean(covid$Child_Age.TC)
+sd(covid$Child_Age.TC)
+```
+
+```{r}
+# figure 1
+# dates not publicly available; identifying information
+cdate<-read.table('/Volumes/group/users/borchersLR/COVID/github/Bay_Area_Cases_Summed_Over_Time.csv',sep=",",header=T)  
+cdate$Date<-na.omit(cdate$Date)
+cdate$Date<-as.Date(cdate$Date, format = "%m/%d/%y")
+p<-ggplot(cdate, aes(x=Date, y=Bay_Area_Case_Count))+geom_line(size=2, linetype="solid")
+tiff('Data_Collection_COVID_Cases.tiff', units="in", width=5, height=5, res=300)
+p+labs(title="", x="Date", y="Bay Area COVID-19 Case Count")+
+  theme_classic()+
+  theme(axis.title.x=element_text(family="Arial",colour="Black", size=16),
+        axis.text.x=element_text(family="Arial",size=12, colour="black", angle=45, hjust=1))+
+  theme(axis.title.y=element_text(family="Arial",colour="Black", size=16),
+        axis.text.y=element_text(family="Arial", vjust=.5,size=12, colour="black"))+
+  theme(legend.text=element_text(family="Arial",size=12)) +
+  guides(colour = guide_legend(override.aes = list(size=8))) +
+  theme(legend.title=element_text(family="Arial", size=12))+
+  theme(legend.position = "none")+annotate("rect", xmin = as.Date("2020-04-03"), xmax = as.Date("2020-04-23"), ymin = 0, ymax = 8000, alpha = .2)+annotate("text", x = as.Date("2020-04-13"), y = 2000, label = "Data Collection Period", family="Arial") +
+  scale_x_date(name="Date", date_breaks="5 day", date_labels = "%b %d") 
+
+```
+
+```{r}
+# cdi
+# one participant did not complete the cdi at baseline
+min(covid$cdi_TOTAL.T1, na.rm = TRUE)
+max(covid$cdi_TOTAL.T1, na.rm = TRUE)
+mean(covid$cdi_TOTAL.T1, na.rm = TRUE)
+sd(covid$cdi_TOTAL.T1, na.rm = TRUE)
+# crobach's alpha for cdi at baseline
+cdi_t1 = read.csv("/Volumes/group/users/borchersLR/COVID/github/cdi_t1.csv")
+cdi_t1 = cdi_t1 %>% 
+   filter(!is.na(cdi_1.T1)) 
+cdi_t1 %>% 
+  select(
+    cdi_1.T1, 
+    cdi_2_R.T1, 
+    cdi_3.T1, 
+    cdi_4_R.T1, 
+    cdi_5_R.T1, 
+    cdi_6_R.T1,
+    cdi_7.T1,
+    cdi_8.T1,
+    cdi_9.T1,
+    cdi_10_R.T1
+  ) %>% 
+  alpha()
+```
+
+```{r}
+# cesdc
+# internal consistency 
+# df with all cesdc and pss items at tc
+items = read.csv("/Volumes/group/users/borchersLR/COVID/github/pss_cesd_items.csv")
+# pss
+# one participant did not complete the pss at tc
+# reverse code 4, 5, 7, 8, then sum
+items <-
+  items %>%
+  mutate_at(
+    vars(
+      covid_pss_c_4, covid_pss_c_5, covid_pss_c_7, covid_pss_c_8
+    ),
+    funs(
+      . %>%
+        dplyr::recode(
+          "0" = 4,
+          "1" = 3,
+          "2" = 2,
+          "3" = 1,
+          "4" = 0
+        )
+    )
+  )
+items %>% 
+  select(
+    covid_pss_c_1, 
+    covid_pss_c_2, 
+    covid_pss_c_3, 
+    covid_pss_c_4, 
+    covid_pss_c_5, 
+    covid_pss_c_6,
+    covid_pss_c_7,
+    covid_pss_c_8,
+    covid_pss_c_9,
+    covid_pss_c_10
+  ) %>% 
+  alpha()
+
+# cesdc
+# reverse code 4, 8, 12, 16, then sum
+items <-
+  items %>%
+  mutate_at(
+    vars(
+      covid_cesd_c_4, covid_cesd_c_8, covid_cesd_c_12, covid_cesd_c_16
+    ),
+    funs(
+      . %>%
+        dplyr::recode(
+          "0" = 3,
+          "1" = 2,
+          "2" = 1,
+          "3" = 0
+        )
+    )
+  )
+items %>% 
+  select(
+    covid_cesd_c_1, 
+    covid_cesd_c_2, 
+    covid_cesd_c_3, 
+    covid_cesd_c_4, 
+    covid_cesd_c_5, 
+    covid_cesd_c_6,
+    covid_cesd_c_7,
+    covid_cesd_c_8,
+    covid_cesd_c_9,
+    covid_cesd_c_10,
+    covid_cesd_c_11,
+    covid_cesd_c_12,
+    covid_cesd_c_13,
+    covid_cesd_c_14,
+    covid_cesd_c_15,
+    covid_cesd_c_16,
+    covid_cesd_c_17,
+    covid_cesd_c_18,
+    covid_cesd_c_19,
+    covid_cesd_c_20
+  ) %>% 
+  alpha()
+```
+
+```{r}
+# calculating self-report covid symptoms
+covid$covid_physs <-covid$Covid_child_fever.TC + covid$Covid_child_cough.TC + covid$Covid_child_short_breath.TC + covid$Covid_child_sore_throat.TC + covid$Covid_child_fatigue.TC + covid$Covid_child_loss_taste_smell.TC + covid$Covid_child_other_symptom.TC
+```
+
+```{r}
+### table 1
+## age baseline
+t.test(Age_S1.T1 ~ Child_Sex.T1, data = covid, var.equal = T)
+# 1 is male; 2 is female
+covid %>%
+   group_by(Child_Sex.T1) %>%
+   summarise(sd = sd(Age_S1.T1))
+## els severity baseline
+t.test(sumsev_type_t1 ~ Child_Sex.T1, data = covid, var.equal = T)
+# 1 is male; 2 is female
+covid %>%
+   group_by(Child_Sex.T1) %>%
+   summarise(sd = sd(sumsev_type_t1))
+## cdi baseline
+# one male participant missing cdi at baseline
+t.test(cdi_TOTAL.T1 ~ Child_Sex.T1, data = covid, rm.na = TRUE, var.equal = T)
+# 1 is male; 2 is female
+covid %>%
+   group_by(Child_Sex.T1) %>%
+   summarise(sd = sd(cdi_TOTAL.T1, na.rm = TRUE))
+## race
+# 1 is white; 2 is black/african american; 3 is hispanic/latin-x; 4 is asian/asian american; 5 is biracial; 6 is other race
+race <- data.frame(covid$Child_Sex.T1, covid$KSADS_Child_Race_by_P.T1)
+race = table(covid$Child_Sex.T1, covid$KSADS_Child_Race_by_P.T1)
+print(race)
+print(chisq.test(race))
+covid %>% 
+  count(KSADS_Child_Race_by_P.T1, Child_Sex.T1, sort = TRUE) %>% 
+  arrange(KSADS_Child_Race_by_P.T1, Child_Sex.T1)
+## parental income
+covid_income <-
+  covid %>%
+  mutate_at(
+    vars(Parent_Income.T1
+    ),
+    funs(
+      . %>%
+        dplyr::recode(
+          "10" = 3,
+          "9" = 2,
+          "8" = 2,
+          "7" = 2,
+          "6" = 2,
+          "5" = 1,
+          "4" = 1,
+          "3" = 1,
+          "2" = 1,
+          "1" = 1,
+        )
+    )
+  )
+covid_income <- covid_income %>%
+    mutate(Parent_Income.T1 = if_else(is.na(Parent_Income.T1), 0, Parent_Income.T1))
+income = table(covid_income$Child_Sex.T1, covid_income$Parent_Income.T1)
+print(income)
+print(chisq.test(income))
+ covid_income %>% 
+  count(Parent_Income.T1, Child_Sex.T1, sort = TRUE) %>% 
+  arrange(Parent_Income.T1, Child_Sex.T1)
+ 
+## age tc
+t.test(Child_Age.TC ~ Child_Sex.T1, data = covid, var.equal = T)
+# 1 is male; 2 is female
+covid %>%
+   group_by(Child_Sex.T1) %>%
+   summarise(sd = sd(Child_Age.TC))
+## pss tc
+# one participant missing pss at tc
+t.test(PSS_total.TC ~ Child_Sex.T1, data = covid, var.equal = T)
+# 1 is male; 2 is female
+covid %>%
+   group_by(Child_Sex.T1) %>%
+   summarise(sd = sd(PSS_total.TC, na.rm = TRUE))
+## cesdc tc
+# one participant missing pss at tc
+t.test(CESDC_total.TC ~ Child_Sex.T1, data = covid, var.equal = T)
+# 1 is male; 2 is female
+covid %>%
+   group_by(Child_Sex.T1) %>%
+   summarise(sd = sd(CESDC_total.TC))
+```
+
+```{r}
+### sample characteristics 
+## race
+# 1 is white; 2 is black/african american; 3 is hispanic/latin-x; 4 is asian/asian american; 5 is biracial; 6 is other race
+# binarizing race
+# covid <-
+  covid %>%
+  mutate_at(
+    vars(KSADS_Child_Race_by_P.T1
+    ),
+    funs(
+      . %>%
+        dplyr::recode(
+          "1" = 1,
+          "2" = 0,
+          "3" = 0,
+          "4" = 0,
+          "5" = 0,
+          "6" = 0
+        )
+    )
+  )
+
+# covid %>%
+#    group_by(KSADS_Child_Race_by_P.T1) %>%
+#    summarise(n = n())
+#calculation of non-white participants
+63/109
+## income
+# 2 is less than 10k; 10 is more than 150k
+min(covid$Parent_Income.T1, na.rm = TRUE)
+max(covid$Parent_Income.T1, na.rm = TRUE)
+```
+
+```{r}
+### sex differences crisis
+x <- which(names(covid) == "Child_Sex.T1") # name of grouping variable
+y <- which(names(covid) == "Mental_health_rating.TC" # names of variables to test
+           | names(covid) == "Worry_self_infected.TC"
+           | names(covid) == "Worry_fam_infected.TC"
+           | names(covid) == "Self_phys_health_influence.TC"
+           | names (covid) == "Self_mental_health_influence.TC"
+           | names (covid) == "Read_talk_virus.TC"
+           | names (covid) == "Covid_positive_changes.TC"
+           | names (covid) == "Stress_of_restrictions.TC"
+           | names (covid) == "Contacts_outside_change.TC"
+           | names (covid) == "Diff_following_contact_rules.TC"
+           | names (covid) == "Quality_relations_family_change.TC"
+           | names (covid) == "Stress_relations_family_change.TC"
+           | names (covid) == "Quality_relations_friends_change.TC"
+           | names (covid) == "Stress_relations_friends_change.TC"
+           | names (covid) == "Cancelling_events_difficulty.TC"
+           | names (covid) == "Family_financial_problems.TC"
+           | names (covid) == "Worry_living_stability.TC"
+           | names (covid) == "Hope_crisis_end.TC"
+           | names (covid) == "covid_physs")
+method <- "t.test" # one of "wilcox.test" or "t.test"
+paired <- FALSE 
+for (i in y) {
+  for (j in x) {
+    ifelse(paired == TRUE,
+           p <- ggpaired(covid,
+                         x = colnames(covid[j]), y = colnames(covid[i]),
+                         color = colnames(covid[j]), line.color = "gray", line.size = 0.4,
+                         palette = "npg",
+                         legend = "none",
+                         xlab = colnames(covid[j]),
+                         ylab = colnames(covid[i]),
+                         add = "jitter"
+           ),
+           p <- ggboxplot(covid,
+                          x = colnames(covid[j]), y = colnames(covid[i]),
+                          color = colnames(covid[j]),
+                          palette = "npg",
+                          legend = "none",
+                          add = "jitter"
+           )
+    )
+    #  Add p-value
+    print(p + stat_compare_means(aes(label = paste0(..method.., ", p-value = ", ..p.format..)),
+                                 method = method,
+                                 paired = paired,
+                                 # group.by = NULL,
+                                 ref.group = NULL
+    ))
+  }
+}
+# significant sex differences on the crisis
+t.test(covid_physs ~ Child_Sex.T1, data = covid, var.equal = TRUE)
+t.test(Worried_2weeks.TC ~ Child_Sex.T1, data = covid, var.equal = TRUE)
+t.test(Happy_sad_2weeks.TC ~ Child_Sex.T1, data = covid, var.equal = TRUE)
+t.test(Relaxed_anxious_2weeks.TC ~ Child_Sex.T1, data = covid, var.equal = TRUE)
+t.test(Fatigued_tired_2weeks.TC ~ Child_Sex.T1, data = covid, var.equal = TRUE)
+t.test(Loneliness_2weeks.TC ~ Child_Sex.T1, data = covid, var.equal = TRUE)
+t.test(Concentration_2weeks.TC ~ Child_Sex.T1, data = covid, var.equal = TRUE)
+t.test(Neg_thoughts_2weeks.TC ~ Child_Sex.T1, data = covid, var.equal = TRUE)
+t.test(Self_mental_health_influence.TC ~ Child_Sex.T1, data = covid, var.equal = TRUE)
+t.test(Mental_health_rating.TC ~ Child_Sex.T1, data = covid, var.equal = TRUE)
+t.test(Cancelling_events_difficulty.TC ~ Child_Sex.T1, data = covid, var.equal = TRUE)
+t.test(Worry_no_food.TC ~ Child_Sex.T1, data = covid, var.equal = TRUE)
+t.test(Anhedonia_2weeks.TC ~ Child_Sex.T1, data = covid, var.equal = TRUE)
+# no sex differences 
+t.test(Physical_health_rating.TC ~ Child_Sex.T1, data = covid, var.equal = TRUE)
+t.test(Fidgety_restless_2weeks.TC ~ Child_Sex.T1, data = covid, var.equal = TRUE)
+t.test(Irritability_2weeks.TC ~ Child_Sex.T1, data = covid, var.equal = TRUE)
+```
+
+```{r}
+# data file for group comparisons of responders/non-responders
+completers_noncompleters = read.csv("/Volumes/group/users/borchersLR/COVID/github/completers_noncompleters.csv")
+completers_noncompleters = completers_noncompleters %>% 
+    mutate(subsample = !is.na(CESDC_total.TC))
+# 109 included in sample; 115 did not complete tc assessment
+completers_noncompleters %>% 
+      group_by(subsample) %>%
+      summarise(n=n())
+## group comparisons covid-19 survey completers vs. non-completers
+# age at baseline
+t.test(Age_S1.T1 ~ subsample, data = completers_noncompleters, var.equal=T)
+# race
+# 1 is white; 2 is african american; 3 is hispanic; 4 is asian; 5 is biracial; 6 is other
+race <- data.frame(completers_noncompleters$subsample, completers_noncompleters$KSADS_Child_Race_by_P.T1)
+race = table(completers_noncompleters$subsample, completers_noncompleters$KSADS_Child_Race_by_P.T1)
+print(race)
+print(chisq.test(race))
+# els baseline
+t.test(sumsev_type_t1 ~ subsample, data = completers_noncompleters, var.equal=T)
+t.test(cdi_TOTAL.T1 ~ subsample, data = completers_noncompleters, rm.na=TRUE,  var.equal=T)
+# parental income
+covid_income_all <-
+  completers_noncompleters %>%
+  mutate_at(
+    vars(Parent_Income.T1
+    ),
+    funs(
+      . %>%
+        dplyr::recode(
+          "10" = 3,
+          "9" = 2,
+          "8" = 2,
+          "7" = 2,
+          "6" = 2,
+          "5" = 1,
+          "4" = 1,
+          "3" = 1,
+          "2" = 1,
+          "1" = 1,
+        )
+    )
+  )
+# setting na values for income to 0
+covid_income_all <- covid_income_all %>%
+    mutate(Parent_Income.T1 = if_else(is.na(Parent_Income.T1), 0, Parent_Income.T1))
+income <- data.frame(covid_income_all$subsample, covid_income_all$Parent_Income.T1)
+income = table(covid_income_all$subsample, covid_income_all$Parent_Income.T1)
+print(income)
+print(chisq.test(income))
+```
+
+```{r}
+# figure 2
+covid_plot = covid %>% 
+  select(cdi_TOTAL.T1, sumsev_type_t1, PSS_total.TC, CESDC_total.TC, 
+              covid_physs, Worry_no_food.TC, Mental_health_rating.TC, 
+              Cancelling_events_difficulty.TC, Stress_of_restrictions.TC, 
+              Stress_relations_family_change.TC, Stress_relations_friends_change.TC)
+
+covid_plot <-covid_plot %>% rename('CDI-S Baseline' = cdi_TOTAL.T1, 'ELS Severity Baseline' = sumsev_type_t1, 'PSS COVID-19' = PSS_total.TC, 
+                                   'CES-DC COVID-19' = CESDC_total.TC, 'Symptoms COVID-19' = covid_physs, 'Worry About Food COVID-19' = Worry_no_food.TC, 
+                                   'Mental Health Impact COVID-19' = Mental_health_rating.TC, 'Difficulty Cancel Events COVID-19' = Cancelling_events_difficulty.TC,  
+                                   'Stress of Restrictions COVID-19' = Stress_of_restrictions.TC, 'Stress Change Family Contact COVID-19' = Stress_relations_family_change.TC,
+                                   'Stress Change Social Contact COVID-19' = Stress_relations_friends_change.TC)
+
+ggcorrmat(
+  covid,
+  cor.vars = c('CDI-S Baseline' = cdi_TOTAL.T1, 'ELS Severity Baseline' = sumsev_type_t1, 'PSS COVID-19' = PSS_total.TC, 'CES-DC COVID-19' = CESDC_total.TC, 'Symptoms COVID-19' =
+              covid_physs, 'Worry About Food COVID-19' = Worry_no_food.TC, 'Mental Health Impact COVID-19' = Mental_health_rating.TC, 'Difficulty Cancel Events COVID-19' =
+              Cancelling_events_difficulty.TC,  'Stress of Restrictions COVID-19' = Stress_of_restrictions.TC, 
+              'Stress Change Family Contact COVID-19' =Stress_relations_family_change.TC, 'Stress Change Social Contact COVID-19' = Stress_relations_friends_change.TC),
+  sig.level = 0.05,
+  p.adjust.method = "fdr",
+  ggcorrplot.args = c(insig = "blank"),
+  colors = c("white", "grey80", "grey30"),
+  matrix.type = "lower",
+  title = "Correlations among Baseline and COVID-19 \n items/measures assessed in this study",
+      plot.title = element_text(size = 12, hjust = .5))
+#  ggsave("~/Desktop/figure2.tiff", height = 7, width = 9)
+```
+
+```{r}
+# setting theme for graphs
+base_size=9
+theme_set(
+theme_minimal(
+  base_size = 11,
+  base_family = "",
+  base_line_size = base_size/22,
+  base_rect_size = base_size/22
+))
+# figure 3a
+cor.test(covid$PSS_total.TC, covid$sumsev_type_t1)
+covid = covid %>%
+  mutate(Child_Sex.T1 = as.factor(Child_Sex.T1))
+figure1.1=covid %>% 
+  ggplot(mapping = aes(x = sumsev_type_t1,
+                       y = PSS_total.TC,
+                       color = Child_Sex.T1)) +
+  geom_point(alpha = .6, size = 3)+
+  geom_smooth(method = "lm", alpha=.1, size = 2) +
+  labs(x = "ELS Severity (Baseline)") +
+  labs(y = "Perceived Stress (COVID-19)") + 
+  ggtitle(~italic(r)~"(106)=0.35,"~italic(p)~"0<.001") +
+  theme(plot.title = element_text(hjust = 0.5, size=30)) +
+  theme(axis.line = element_line(size = 1)) +
+  theme(legend.title = element_blank()) +
+  theme(legend.position = c(.92, .85)) +
+  labs(subtitle="A") +
+  theme(plot.subtitle=element_text(size=18, face="bold", color="black")) +
+  theme(axis.text=element_text(size=20)) +
+  theme(axis.title=element_text(size=18)) +
+  geom_hline(yintercept=14.2, color = "gray",
+         linetype="dashed") +
+  annotate("text", x = 16, y = 12, label = "Average PSS in adolescents", color="dark gray") + 
+  scale_color_manual(labels = c("Male", "Female"), values = c("#4d4f53", "#8c1515"))+
+  xlim(0,20) + 
+  ylim(0, 52)
+# ggsave("~/Desktop/els_pss.tiff", height = 5, width = 6)
+# figure 3b
+cor.test(covid$CESDC_total.TC, covid$sumsev_type_t1)
+figure1.2=covid %>% 
+  ggplot(mapping = aes(x = sumsev_type_t1,
+                       y = CESDC_total.TC,
+                       color = Child_Sex.T1)) +
+  geom_point(alpha = .6, size = 3)+
+  geom_smooth(method = "lm", alpha=.1, size = 2) +
+  labs(x = "ELS Severity (Baseline)") +
+  labs(y = "Depression Symptoms (COVID-19)") + 
+  ggtitle(~italic(r)~"(107)=0.26,"~italic(p)~"=0.006") +
+  theme(plot.title = element_text(hjust = 0.5, size=30)) +
+  theme(axis.line = element_line(size = 1)) +
+  theme(legend.title = element_blank()) +
+  theme(legend.position = c(.92, .85)) +
+  labs(subtitle="B") +
+  theme(plot.subtitle=element_text(size=18, face="bold", color="black")) +
+  theme(axis.text=element_text(size=20)) +
+  theme(axis.title=element_text(size=18)) +
+  geom_hline(yintercept=15, color = "gray",
+         linetype="dashed") +
+  annotate("text", x = 17, y = 12, label = "CES-DC cut-off score", color="dark gray") + 
+  scale_color_manual(labels = c("Male", "Female"), values = c("#4d4f53", "#8c1515"))+
+  xlim(0,20) + 
+  ylim(0, 52)
+# ggsave("~/Desktop/els_cesdc.tiff", height = 5, width = 6)
+
+# combined figure 
+require(gridExtra)
+require(cowplot)
+grid.arrange(figure1.1, figure1.2, ncol=2)
+
+g <- arrangeGrob(figure1.1, figure1.2, ncol=2) #generates g
+ggsave(file="~/Desktop/figure3.tiff", g, height = 6, width = 12)
+ 
+```
+
+```{r}
+# comparing scores in our sample to validated sample / clinical cutoff
+mean(covid$PSS_total.TC, na.rm = TRUE)
+# mean of pss in validated sample of 645 adolescents between 18-29 years old
+14.2
+# difference between pss in our sample and the validated sample
+18.45-14.2
+# number of participants above clinical cutoff of 15 on the cesdc
+sum(covid$CESDC_total.TC > 15)
+# percent above cutoff in our sample
+69/109
+```
+
+```{r}
+## mediation analysis 
+# centering variables 
+covid$Age_S1.T1_z=scale(covid$Age_S1.T1, center=TRUE, scale =TRUE) 
+covid$CDI_total.T1_z=scale(covid$cdi_TOTAL.T1, center=TRUE, scale =TRUE)
+covid$sumsev_type_t1_z=scale(covid$sumsev_type_t1, center=TRUE, scale =TRUE) 
+covid$Child_Age.TC_z=scale(covid$Child_Age.TC, center=TRUE, scale =TRUE) 
+covid$PSS_total.TC_z=scale(covid$PSS_total.TC, center=TRUE, scale =TRUE)
+covid$CESDC_total.TC_z=scale(covid$CESDC_total.TC, center=TRUE, scale =TRUE) 
+covid = covid %>%
+  mutate(Child_Sex.T1 = as.numeric(Child_Sex.T1))
+# # mediation
+mediation_model <- mediate(CESDC_total.TC_z ~ sumsev_type_t1_z + (PSS_total.TC_z)- CDI_total.T1_z - Child_Sex.T1 - Age_S1.T1_z - Child_Age.TC_z - KSADS_Child_Race_by_P.T1 - 
+                           income_3levels, data =covid,n.iter=5000) 
+summary(mediation_model)
+```
